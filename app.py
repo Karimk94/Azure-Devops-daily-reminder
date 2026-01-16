@@ -31,88 +31,128 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-def send_overdue_email(to_email, item_id, title, due_date_str, project_name):
-    link = f"{ADO_URL}/{COLLECTION}/{quote(project_name)}/_workitems/edit/{item_id}/"
+def send_summary_email(to_email, tasks):
+    count = len(tasks)
+    subject = f"Action Required: {count} Overdue Task{'s' if count > 1 else ''}"
     
     msg = EmailMessage()
-    msg['Subject'] = f"Action Required: Overdue Task {item_id} - {title}"
+    msg['Subject'] = subject
     msg['From'] = FROM_EMAIL
     msg['To'] = to_email
     
+    # Generate Task Rows matches ADO list style
+    task_rows = ""
+    for task in tasks:
+        task_rows += f"""
+        <tr>
+            <td valign="top" style="padding: 12px 0; border-bottom: 1px solid #EAEAEA; width: 60px;">
+                <a href="{task['link']}" style="font-family: 'Segoe UI', sans-serif; font-size: 14px; font-weight: 600; color: #0078D4; text-decoration: none;">
+                    {task['id']}
+                </a>
+            </td>
+            <td valign="top" style="padding: 12px 16px; border-bottom: 1px solid #EAEAEA;">
+                <div style="margin-bottom: 4px;">
+                    <a href="{task['link']}" style="font-family: 'Segoe UI', sans-serif; font-size: 14px; font-weight: 600; color: #212121; text-decoration: none;">
+                        {task['title']}
+                    </a>
+                </div>
+                <div style="font-family: 'Segoe UI', sans-serif; font-size: 12px; color: #666666;">
+                    {task['project']}
+                </div>
+            </td>
+            <td valign="top" align="right" style="padding: 12px 0; border-bottom: 1px solid #EAEAEA; white-space: nowrap;">
+                <span style="font-family: 'Segoe UI', sans-serif; font-size: 12px; font-weight: 600; color: #D93025; background-color: #FCE8E6; padding: 4px 8px; border-radius: 4px;">
+                    {task['due_date']}
+                </span>
+            </td>
+        </tr>
+        """
+
     html_content = f"""
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="utf-8">
+        <style>
+            body {{ font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif; margin: 0; padding: 0; }}
+            a {{ text-decoration: none; }}
+            a:hover {{ text-decoration: underline; }}
+        </style>
     </head>
-    <body style="font-family: 'Google Sans', Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; color: #202124;">
-        <!-- Wrapper Table for Centering in Outlook -->
-        <table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#f0f2f5" style="width: 100%; background-color: #f0f2f5;">
+    <body style="margin: 0; padding: 0; background-color: #F8F8F8;">
+        <!-- Full Width Header -->
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="width:100%; background-color: white; border-bottom: 1px solid #EAEAEA;">
             <tr>
-                <td align="center" style="padding: 40px 0;">
-                    
-                    <!-- Main Container Table (Fixed Width 600px) -->
-                    <table width="600" border="0" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="width: 600px; max-width: 600px; background-color: #ffffff; border-radius: 8px; font-family: sans-serif; box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3);">
-                        
-                        <!-- Header -->
+                <td align="center">
+                    <table width="640" border="0" cellspacing="0" cellpadding="0" style="width: 640px; max-width: 640px;">
                         <tr>
-                            <td align="center" style="padding: 24px 24px 0 24px;">
-                                <div style="font-size: 24px; color: #5f6368; font-weight: 400;">ITSD Task Tracker</div>
-                            </td>
-                        </tr>
-
-                        <!-- Content -->
-                        <tr>
-                            <td style="padding: 24px;">
-                                <div style="color: #d93025; font-size: 48px; text-align: center; margin-bottom: 16px; line-height: 1;">&#9888;</div>
-                                <h1 style="font-size: 22px; font-weight: 400; margin: 0 0 16px 0; color: #202124; text-align: center;">Action Required: Task Overdue</h1>
-                                <p style="font-size: 16px; line-height: 1.5; margin-bottom: 24px; color: #3c4043; text-align: center;">The following work item has exceeded its target completion date.</p>
-                                
-                                <!-- Card (Nested Table for Border/Padding support in Outlook) -->
-                                <table width="100%" border="0" cellpadding="16" cellspacing="0" bgcolor="#f8f9fa" style="background-color: #f8f9fa; border: 1px solid #dadce0; border-radius: 8px; text-align: left;">
+                            <td style="padding: 16px 0;">
+                                <table width="100%" border="0" cellspacing="0" cellpadding="0">
                                     <tr>
-                                        <td>
-                                            <div style="margin-bottom: 12px;">
-                                                <span style="font-size: 12px; font-weight: 500; letter-spacing: 0.2px; color: #5f6368; text-transform: uppercase; display: block; margin-bottom: 4px;">Task ID</span>
-                                                <div style="font-size: 16px; color: #202124;">{item_id}</div>
-                                            </div>
-
-                                            <div style="margin-bottom: 12px;">
-                                                <span style="font-size: 12px; font-weight: 500; letter-spacing: 0.2px; color: #5f6368; text-transform: uppercase; display: block; margin-bottom: 4px;">Title</span>
-                                                <div style="font-size: 16px; color: #202124;">{title}</div>
-                                            </div>
-
-                                            <div style="margin-bottom: 12px;">
-                                                <span style="font-size: 12px; font-weight: 500; letter-spacing: 0.2px; color: #5f6368; text-transform: uppercase; display: block; margin-bottom: 4px;">Project</span>
-                                                <div style="font-size: 16px; color: #202124;">{project_name}</div>
-                                            </div>
-
-                                            <div style="margin-bottom: 0;">
-                                                <span style="font-size: 12px; font-weight: 500; letter-spacing: 0.2px; color: #5f6368; text-transform: uppercase; display: block; margin-bottom: 4px;">Due Date</span>
-                                                <div style="font-size: 16px; color: #d93025; font-weight: 500;">{due_date_str}</div>
-                                            </div>
+                                        <!-- Logo Section -->
+                                        <td valign="middle">
+                                            <!-- Embedded CID Logo -->
+                                            <img src="cid:logo_image" alt="RTA" height="55" style="display: block; border: 0;">
+                                        </td>
+                                        <!-- Right Title -->
+                                        <td align="right" valign="middle" style="font-family: 'Segoe UI', sans-serif; font-size: 14px; color: #212121;">
+                                            <span style="color: #666666;">ITSD</span> <span style="color: #0078D4; font-weight: bold;">Task Tracker</span>
                                         </td>
                                     </tr>
                                 </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
 
-                                <!-- Button -->
-                                <div style="text-align: center; margin-top: 24px; margin-bottom: 24px;">
-                                    <a href="{link}" style="background-color: #1a73e8; color: #ffffff; padding: 12px 24px; font-size: 14px; font-weight: 500; text-decoration: none; border-radius: 4px; display: inline-block;">View Work Item</a>
+        <!-- Main Body -->
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="width:100%; background-color: #F8F8F8;">
+            <tr>
+                <td align="center" style="padding: 24px 0;">
+                    <!-- Content Card -->
+                    <table width="640" border="0" cellspacing="0" cellpadding="0" style="width: 640px; max-width: 640px; background-color: white; border: 1px solid #EAEAEA;">
+                        <tr>
+                            <td style="padding: 32px;">
+                                <!-- Alert Title -->
+                                <div style="font-family: 'Segoe UI', sans-serif; font-size: 24px; font-weight: 300; color: #0078D4; margin-bottom: 24px;">
+                                    Action Required: <span style="font-weight: 600;">{count} Overdue Task{'s' if count > 1 else ''}</span>
+                                </div>
+                                
+                                <div style="font-family: 'Segoe UI', sans-serif; font-size: 14px; color: #333333; line-height: 20px; margin-bottom: 24px;">
+                                    The following work items assigned to you have exceeded their target completion date.
                                 </div>
 
+                                <!-- Tasks Table -->
+                                <table width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr>
+                                            <th align="left" style="font-family: 'Segoe UI', sans-serif; font-size: 12px; color: #666666; font-weight: 600; border-bottom: 2px solid #F1F3F4; padding-bottom: 8px;">ID</th>
+                                            <th align="left" style="font-family: 'Segoe UI', sans-serif; font-size: 12px; color: #666666; font-weight: 600; border-bottom: 2px solid #F1F3F4; padding: 0 16px 8px 16px;">DETAILS</th>
+                                            <th align="right" style="font-family: 'Segoe UI', sans-serif; font-size: 12px; color: #666666; font-weight: 600; border-bottom: 2px solid #F1F3F4; padding-bottom: 8px;">DUE DATE</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {task_rows}
+                                    </tbody>
+                                </table>
+
                                 <!-- Arabic Section -->
-                                <div style="border-top: 1px solid #dadce0; margin-top: 24px; padding-top: 24px; text-align: center; direction: rtl;">
-                                    <p style="font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 16px; color: #3c4043; margin: 5px 0;">يرجى ملاحظة أن المهمة أعلاه قد تجاوزت تاريخ الاستحقاق.</p>
-                                    <p style="font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 16px; color: #3c4043; margin: 5px 0;">يرجى اتخاذ الإجراء اللازم.</p>
+                                <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid #EAEAEA; text-align: center; direction: rtl;">
+                                    <p style="font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 14px; color: #333333; margin: 4px 0;">يرجى الملاحظةأن المهام المذكورة أعلاه قد تجاوزت تاريخ الاستحقاق.</p>
+                                    <p style="font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 14px; color: #333333; margin: 4px 0;">يرجى اتخاذ الإجراء اللازم.</p>
                                 </div>
                             </td>
                         </tr>
+                    </table>
 
-                        <!-- Footer -->
+                    <!-- Footer -->
+                    <table width="640" border="0" cellspacing="0" cellpadding="0" style="width: 640px; max-width: 640px; margin-top: 16px;">
                         <tr>
-                            <td style="background-color: #f8f9fa; padding: 24px; text-align: center; font-size: 12px; color: #70757a; border-top: 1px solid #dadce0;">
-                                You received this email because you are assigned to this task.<br>
-                                &copy; {datetime.now().year} RTA. All rights reserved.
+                            <td align="center" style="font-family: 'Segoe UI', sans-serif; font-size: 12px; color: #70757A; line-height: 18px;">
+                                &copy; {datetime.now().year} RTA. All rights reserved.<br>
+                                This is an automated notification. Please do not reply.
                             </td>
                         </tr>
                     </table>
@@ -126,14 +166,21 @@ def send_overdue_email(to_email, item_id, title, due_date_str, project_name):
     msg.set_content("This email requires an HTML-enabled client to view properly.", subtype='plain')
     msg.add_alternative(html_content, subtype='html')
 
+    # Embed Logo
+    logo_path = os.path.join(application_path, "logo.png")
+    if os.path.exists(logo_path):
+        with open(logo_path, 'rb') as f:
+            file_data = f.read()
+            msg.get_payload()[1].add_related(file_data, maintype='image', subtype='png', cid='logo_image')
+    else:
+        logging.warning(f"Logo not found at {logo_path}")
+
     try:
         with smtplib.SMTP(SMTP_SERVER, 25) as smtp:
             smtp.send_message(msg)
-            print(f"Overdue reminder sent for ID {item_id} to {to_email}")
-            logging.info(f"SENT: ID {item_id} | Title: {title} | To: {to_email}")
+            logging.info(f"SENT: To: {to_email} | Count: {count}")
     except Exception as e:
-        print(f"Failed to send email to {to_email}: {e}")
-        logging.error(f"FAILED: ID {item_id} | To: {to_email} | Error: {e}")
+        logging.error(f"FAILED: To: {to_email} | Error: {e}")
 
 def get_email_from_identity_url(url, auth):
     try:
@@ -157,25 +204,14 @@ def get_email_from_identity_url(url, auth):
             if 'emailAddress' in data: 
                 return data['emailAddress']
     except Exception as e:
-        print(f"Debug: Failed to fetch identity from {url}: {e}")
+        logging.error(f"Debug: Failed to fetch identity from {url}: {e}")
     return None
 
 def test_email_delivery(target_email):
-    print(f"--- Running Email Test ---")
-    print(f"Target: {target_email}")
     
-    # Dummy Data for testing
-    test_id = 99999
-    test_title = "Test Task: Verify Email Layout and Delivery"
-    test_date = datetime.now().strftime("%d/%m/%Y")
-    test_project = "ITSD Test Project"
-    
-    send_overdue_email(target_email, test_id, test_title, test_date, test_project)
-    print("Test email sent.")
-
-def monitor_tasks():
     today = datetime.now().date()
-    email_cache = {} # Cache to avoid repeated API calls for same user
+    email_cache = {}
+    tasks_by_email = {}
     
     wiql_url = f"{ADO_URL}/{COLLECTION}/_apis/wit/wiql?api-version={API_VERSION}"
     query_payload = {
@@ -185,14 +221,126 @@ def monitor_tasks():
     auth = HttpNegotiateAuth()
     
     try:
-        response = requests.post(wiql_url, json=query_payload, auth=auth, verify=False) # verify=False if internal certs issues
+        response = requests.post(wiql_url, json=query_payload, auth=auth, verify=False)
         response.raise_for_status()
         work_items = response.json().get("workItems", [])
     except Exception as e:
-        print(f"Error querying WIQL: {e}")
+        logging.error(f"Error querying WIQL: {e}")
         return
 
-    print(f"Checking {len(work_items)} items...")
+    for item_ref in work_items:
+        item_id = item_ref['id']
+        item_url = f"{ADO_URL}/{COLLECTION}/_apis/wit/workitems/{item_id}?api-version={API_VERSION}"
+        
+        try:
+            item_resp = requests.get(item_url, auth=auth, verify=False)
+            if item_resp.status_code != 200: continue
+            
+            item = item_resp.json()
+            fields = item.get('fields', {})
+            
+            # Check Date (Strict Overdue Check)
+            target_date_str = fields.get(DATE_FIELD)
+            if not target_date_str: continue
+            
+            try:
+                due_dt = datetime.fromisoformat(target_date_str.replace('Z', '+00:00'))
+                due_date = due_dt.date()
+            except ValueError: continue
+
+            if due_date >= today: continue # Not overdue
+
+            assigned_to = fields.get('System.AssignedTo')
+            if not assigned_to: continue
+            
+            to_email = None
+            unique_identifier = None
+
+            if isinstance(assigned_to, dict):
+                unique_identifier = assigned_to.get('uniqueName')
+                identity_url = assigned_to.get('url')
+                
+                if unique_identifier and '@' in unique_identifier and '.' in unique_identifier:
+                    to_email = unique_identifier
+                elif identity_url:
+                    if unique_identifier in email_cache:
+                        to_email = email_cache[unique_identifier]
+                    else:
+                        fetched_email = get_email_from_identity_url(identity_url, auth)
+                        if fetched_email:
+                            to_email = fetched_email
+                            email_cache[unique_identifier] = to_email
+
+            elif isinstance(assigned_to, str):
+                if '<' in assigned_to:
+                    to_email = assigned_to.split('<')[1].strip('>')
+                elif '@' in assigned_to:
+                    to_email = assigned_to
+
+            if not to_email or '@' not in to_email: continue
+
+            # Collect Task
+            title = fields.get('System.Title', 'No Title')
+            project_name = fields.get('System.TeamProject', 'ITSD Task Tracker')
+            formatted_date = due_date.strftime("%d/%m/%Y")
+            link = f"{ADO_URL}/{COLLECTION}/{quote(project_name)}/_workitems/edit/{item_id}/"
+            
+            if to_email not in tasks_by_email:
+                tasks_by_email[to_email] = []
+            
+            tasks_by_email[to_email].append({
+                'id': item_id,
+                'title': title,
+                'project': project_name,
+                'due_date': formatted_date,
+                'link': link
+            })
+            
+        except Exception:
+            continue
+
+    # Logic to select the best candidate
+    candidate_tasks = []
+    found_multi = False
+
+    for email, tasks in tasks_by_email.items():
+        if len(tasks) > 1:
+            candidate_tasks = tasks
+            found_multi = True
+            print(f"Selected candidate: {email} with {len(tasks)} tasks.")
+            break
+            
+    if not found_multi and tasks_by_email:
+        # Fallback to any user
+        first_email = list(tasks_by_email.keys())[0]
+        candidate_tasks = tasks_by_email[first_email]
+        print(f"No multi-task candidate found. Falling back to: {first_email}")
+
+    if candidate_tasks:
+        send_summary_email(target_email, candidate_tasks)
+        print("Test email sent successfully.")
+    else:
+        print("No overdue tasks found in the system to test.")
+
+def monitor_tasks():
+    today = datetime.now().date()
+    email_cache = {}
+    tasks_by_email = {}
+    
+    wiql_url = f"{ADO_URL}/{COLLECTION}/_apis/wit/wiql?api-version={API_VERSION}"
+    query_payload = {
+        "query": "SELECT [System.Id] FROM WorkItems WHERE [System.State] <> 'Closed'"
+    }
+    
+    auth = HttpNegotiateAuth()
+    
+    try:
+        response = requests.post(wiql_url, json=query_payload, auth=auth, verify=False)
+        response.raise_for_status()
+        work_items = response.json().get("workItems", [])
+    except Exception as e:
+        logging.error(f"Error querying WIQL: {e}")
+        return
 
     for item_ref in work_items:
         item_id = item_ref['id']
@@ -216,12 +364,10 @@ def monitor_tasks():
             except ValueError:
                 continue
 
-            # Check if overdue (Due date must be strictly less than today)
             if due_date >= today:
                 print(f"Skipping ID {item_id}: Not overdue (Due: {due_date})")
                 continue
                 
-            # Get Assignee and Extract Email
             assigned_to = fields.get('System.AssignedTo')
             if not assigned_to:
                 continue
@@ -230,14 +376,11 @@ def monitor_tasks():
             unique_identifier = None
 
             if isinstance(assigned_to, dict):
-                # If API returns an object
                 unique_identifier = assigned_to.get('uniqueName')
                 identity_url = assigned_to.get('url')
                 
-                # If uniqueName looks like an email, use it.
                 if unique_identifier and '@' in unique_identifier and '.' in unique_identifier:
                     to_email = unique_identifier
-                # Otherwise, fetch from Identity API using the URL provided in the object
                 elif identity_url:
                     if unique_identifier in email_cache:
                         to_email = email_cache[unique_identifier]
@@ -250,7 +393,6 @@ def monitor_tasks():
                                 email_cache[unique_identifier] = to_email
 
             elif isinstance(assigned_to, str):
-                # If API returns a string: "Display Name <email@domain.com>"
                 if '<' in assigned_to and '>' in assigned_to:
                     start = assigned_to.find('<') + 1
                     end = assigned_to.find('>', start)
@@ -258,28 +400,38 @@ def monitor_tasks():
                 elif '@' in assigned_to:
                     to_email = assigned_to
 
-            # Validate extracted email
             if not to_email or '@' not in to_email:
                 print(f"Could not resolve email for item {item_id}. Assignee: {unique_identifier or assigned_to}")
                 continue
 
-            # Prepare data for email
+            # Instead of sending immediately, collect the task
             title = fields.get('System.Title', 'No Title')
-            project_name = fields.get('System.TeamProject', 'ITSD Task Tracker') # Default if missing
+            project_name = fields.get('System.TeamProject', 'ITSD Task Tracker')
             formatted_date = due_date.strftime("%d/%m/%Y")
+            link = f"{ADO_URL}/{COLLECTION}/{quote(project_name)}/_workitems/edit/{item_id}/"
             
-            # Call new function signature
-            send_overdue_email(to_email, item_id, title, formatted_date, project_name)
+            if to_email not in tasks_by_email:
+                tasks_by_email[to_email] = []
+            
+            tasks_by_email[to_email].append({
+                'id': item_id,
+                'title': title,
+                'project': project_name,
+                'due_date': formatted_date,
+                'link': link
+            })
             
         except Exception as e:
             print(f"Error processing item {item_id}: {e}")
+
+    for email, tasks in tasks_by_email.items():
+        send_summary_email(email, tasks)
 
 if __name__ == "__main__":
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     
-    monitor_tasks()
-    # debug_list_fields()
-
+    # monitor_tasks()
+    
     # Uncomment the line below to test email delivery to your personal address
-    # test_email_delivery("your.personal.email@example.com")
+    test_email_delivery("okool_karim.abdulwahed@rta.ae")
