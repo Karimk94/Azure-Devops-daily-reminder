@@ -1,0 +1,4 @@
+requests
+requests-negotiate-sspi
+pyinstaller
+pywin32
